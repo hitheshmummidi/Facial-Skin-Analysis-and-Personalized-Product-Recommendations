@@ -1,0 +1,1434 @@
+<!-- <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
+        }
+        button {
+            background-color: blue;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: darkblue;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Skin Condition Analysis</h1>
+        <form method="post" action="/predict" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Analyze</button>
+        </form>
+        <div class="result">
+            {% if prediction %}
+                <h2>Prediction: <span>{{ prediction }}</span></h2>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            
+            background-image: url('/static/skincondition.jpg');
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px; /* Add margin-bottom to create space between buttons */
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .uploaded-image-container {
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover; /* Ensures image stays within the container */
+            border-radius: 10px;
+        }
+        .file-input {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        h1 {
+            color: #007bff;
+            text-transform: uppercase;
+        }
+        h1 .symbol {
+            font-size: 1.5em;
+            vertical-align: middle;
+        }
+        #camera-container {
+            display: none; /* Hide camera initially */
+            justify-content: center;
+            align-items: center;
+        }
+        #video-element {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        #preview-image {
+            max-width: 100%; /* Ensures the image fits within the container */
+            height: auto;
+            display: none;
+        }
+        #capture-button {
+            display: none; /* Hide capture button initially */
+        }
+        #file-input {
+            display: none; /* Hide file input initially */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <h1 class="mb-4">Skin Condition Analysis <span class="symbol">🩺</span></h1>
+                    <button type="button" id="choose-file-button" class="btn btn-custom">Choose File</button>
+                    <button type="button" id="capture-image-button" class="btn btn-custom">Capture Image</button>
+                    <button type="button" id="analyze-button" class="btn btn-custom" disabled>Analyze</button>
+                    
+                    <input type="file" name="file" accept="image/*" id="file-input">
+                    
+                    <div id="camera-container">
+                        <video id="video-element" autoplay></video>
+                        <div class="uploaded-image-container">
+                            <img src="" id="preview-image" class="uploaded-image">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="capture-button" class="btn btn-custom">Capture Image</button>
+                    
+                    <div class="result" id="result-section">
+                        Result will be displayed here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        let chooseFileButton = document.getElementById('choose-file-button');
+        let captureImageButton = document.getElementById('capture-image-button');
+        let analyzeButton = document.getElementById('analyze-button');
+        let fileInput = document.getElementById('file-input');
+        let videoElement = document.getElementById('video-element');
+        let captureButton = document.getElementById('capture-button');
+        let previewImage = document.getElementById('preview-image');
+        let cameraContainer = document.getElementById('camera-container');
+        
+        // Reset UI State
+        function resetUI() {
+            previewImage.style.display = 'none';
+            cameraContainer.style.display = 'none';
+            captureButton.style.display = 'none';
+            analyzeButton.disabled = true;
+        }
+
+        // Choose File Button
+        chooseFileButton.addEventListener('click', function() {
+            resetUI();
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length > 0) {
+                analyzeButton.disabled = false;
+            }
+        });
+
+        // Capture Image Button
+        captureImageButton.addEventListener('click', function() {
+            resetUI();
+            cameraContainer.style.display = 'flex';
+            captureButton.style.display = 'inline-block';
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    videoElement.srcObject = stream;
+                    videoElement.play();
+                })
+                .catch(function(error) {
+                    console.error('Error accessing camera:', error);
+                });
+        });
+
+        captureButton.addEventListener('click', function() {
+            let canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            let context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            previewImage.src = canvas.toDataURL('image/jpeg');
+            previewImage.style.display = 'block';
+            analyzeButton.disabled = false;
+        });
+
+        // Analyze Button
+        analyzeButton.addEventListener('click', function() {
+            let formData = new FormData();
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            } else if (previewImage.src) {
+                let base64Image = previewImage.src.split(',')[1];
+                formData.append('image_data', base64Image);
+            }
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultSection = document.getElementById('result-section');
+                resultSection.innerHTML = <h2>Prediction: <span>${data.prediction}</span></h2>;
+                if (data.image_url) {
+                    document.getElementById('preview-image').src = data.image_url;
+                    document.getElementById('preview-image').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>  -->
+
+
+<!-- i have to use this again -->
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('/static/skincondition.jpg');
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+            
+        }
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px; /* Add margin-bottom to create space between buttons */
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .uploaded-image-container {
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover; /* Ensures image stays within the container */
+            border-radius: 10px;
+        }
+        h1 {
+            color: #007bff;
+            text-transform: uppercase;
+        }
+        h1 .symbol {
+            font-size: 1.5em;
+            vertical-align: middle;
+        }
+        #button-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        #camera-container {
+            display: none; /* Hide camera initially */
+            justify-content: center;
+            align-items: center;
+        }
+        #video-element {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        #preview-image {
+            max-width: 100%; /* Ensures the image fits within the container */
+            height: auto;
+            display: none;
+        }
+        #capture-button {
+            display: none; /* Hide capture button initially */
+        }
+        #file-input {
+            display: none; /* Hide file input initially */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <h1 class="mb-4">Skin Condition Analysis <span class="symbol">🩺</span></h1>
+                    <div id="button-container">
+                        <button type="button" id="choose-file-button" class="btn btn-custom">Choose File</button>
+                        <button type="button" id="capture-image-button" class="btn btn-custom">Capture Image</button>
+                    </div>
+                    <button type="button" id="analyze-button" class="btn btn-custom" disabled>Analyze</button>
+                    
+                    <input type="file" name="file" accept="image/*" id="file-input">
+                    
+                    <div id="camera-container">
+                        <video id="video-element" autoplay></video>
+                        <div class="uploaded-image-container">
+                            <img src="" id="preview-image" class="uploaded-image">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="capture-button" class="btn btn-custom">Capture Image</button>
+                    
+                    <div class="result" id="result-section">
+                        Result will be displayed here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        let chooseFileButton = document.getElementById('choose-file-button');
+        let captureImageButton = document.getElementById('capture-image-button');
+        let analyzeButton = document.getElementById('analyze-button');
+        let fileInput = document.getElementById('file-input');
+        let videoElement = document.getElementById('video-element');
+        let cameraContainer = document.getElementById('camera-container');
+        let previewImage = document.getElementById('preview-image');
+        let captureButton = document.getElementById('capture-button');
+        let resultSection = document.getElementById('result-section');
+
+        chooseFileButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            let file = event.target.files[0];
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                analyzeButton.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        captureImageButton.addEventListener('click', () => {
+            cameraContainer.style.display = 'flex';
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    videoElement.srcObject = stream;
+                    captureButton.style.display = 'block';
+                })
+                .catch((err) => {
+                    console.error("Error accessing camera: ", err);
+                });
+        });
+
+        captureButton.addEventListener('click', () => {
+            let canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            let context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            let dataUrl = canvas.toDataURL('image/png');
+            previewImage.src = dataUrl;
+            previewImage.style.display = 'block';
+            analyzeButton.disabled = false;
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+        });
+
+        analyzeButton.addEventListener('click', () => {
+            let formData = new FormData();
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            } else {
+                let dataUrl = previewImage.src;
+                let base64Image = dataUrl.split(',')[1];
+                formData.append('image_data', base64Image);
+            }
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultSection.innerHTML = `<span>${data.prediction}</span>`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultSection.innerHTML = `<span style="color: red;">An error occurred</span>`;
+            });
+        });
+    </script>
+</body>
+</html> -->
+<!-- this is before updated code -->
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('/static/skincondition.jpg');
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .uploaded-image-container {
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        h1 {
+            color: #007bff;
+            text-transform: uppercase;
+        }
+        h1 .symbol {
+            font-size: 1.5em;
+            vertical-align: middle;
+        }
+        #button-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        #camera-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #video-element {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        #preview-image {
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+        #capture-button {
+            display: none;
+        }
+        #file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <h1 class="mb-4">Skin Condition Analysis <span class="symbol">🩺</span></h1>
+                    <form id="user-form">
+                        <div class="form-group">
+                            <label for="name">Name:</label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="age">Age:</label>
+                            <input type="number" class="form-control" id="age" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="skin-type">Skin Type:</label>
+                            <select class="form-control" id="skin-type" required>
+                                <option value="oily">Oily</option>
+                                <option value="dry">Dry</option>
+                                <option value="combination">Combination</option>
+                                <option value="sensitive">Sensitive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Skin Concerns:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="acne" value="1">
+                                <label class="form-check-label" for="acne">Acne</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="irritation" value="1">
+                                <label class="form-check-label" for="irritation">Irritation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="broken-barrier" value="1">
+                                <label class="form-check-label" for="broken-barrier">Broken barrier</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="dark-spots" value="1">
+                                <label class="form-check-label" for="dark-spots">Dark Spots</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="exfoliation" value="1">
+                                <label class="form-check-label" for="exfoliation">Exfoliation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hydration" value="1">
+                                <label class="form-check-label" for="hydration">Hydration</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pigmentation" value="1">
+                                <label class="form-check-label" for="pigmentation">Pigmentation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pimples" value="1">
+                                <label class="form-check-label" for="pimples">Pimples</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pores" value="1">
+                                <label class="form-check-label" for="pores">Pores</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="skin-soothing" value="1">
+                                <label class="form-check-label" for="skin-soothing">Skin soothing</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sun-protection" value="1">
+                                <label class="form-check-label" for="sun-protection">Sun protection</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="whitehead-blackhead" value="1">
+                                <label class="form-check-label" for="whitehead-blackhead">Whitehead/Blackhead</label>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="button-container">
+                        <button type="button" id="choose-file-button" class="btn btn-custom">Choose File</button>
+                        <button type="button" id="capture-image-button" class="btn btn-custom">Capture Image</button>
+                    </div>
+                    <button type="button" id="analyze-button" class="btn btn-custom" disabled>Analyze</button>
+                    <button type="button" id="recommend-products-button" class="btn btn-custom" style="display:none;">Recommend Products</button>
+                    <input type="file" name="file" accept="image/*" id="file-input">
+                    <div id="camera-container">
+                        <video id="video-element" autoplay></video>
+                        <div class="uploaded-image-container">
+                            <img src="" id="preview-image" class="uploaded-image">
+                        </div>
+                    </div>
+                    <button type="button" id="capture-button" class="btn btn-custom">Capture Image</button>
+                    <div class="result" id="result-section">
+                        Result will be displayed here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Elements
+        let chooseFileButton = document.getElementById('choose-file-button');
+        let captureImageButton = document.getElementById('capture-image-button');
+        let analyzeButton = document.getElementById('analyze-button');
+        let fileInput = document.getElementById('file-input');
+        let videoElement = document.getElementById('video-element');
+        let cameraContainer = document.getElementById('camera-container');
+        let previewImage = document.getElementById('preview-image');
+        let captureButton = document.getElementById('capture-button');
+        let resultSection = document.getElementById('result-section');
+        let userForm = document.getElementById('user-form');
+        let recommendProductsButton = document.getElementById('recommend-products-button');
+
+        chooseFileButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            let file = event.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                    videoElement.style.display = 'none';
+                    analyzeButton.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        captureImageButton.addEventListener('click', () => {
+            cameraContainer.style.display = 'flex';
+            captureButton.style.display = 'block';
+            chooseFileButton.style.display = 'none';
+            captureImageButton.style.display = 'none';
+            analyzeButton.disabled = true;
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    videoElement.srcObject = stream;
+                })
+                .catch((err) => {
+                    console.error("Error accessing webcam: ", err);
+                });
+        });
+
+        captureButton.addEventListener('click', () => {
+            let canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            canvas.getContext('2d').drawImage(videoElement, 0, 0);
+            let dataUrl = canvas.toDataURL('image/png');
+            previewImage.src = dataUrl;
+            previewImage.style.display = 'block';
+            videoElement.style.display = 'none';
+            analyzeButton.disabled = false;
+        });
+
+        // Analyze Button
+        analyzeButton.addEventListener('click', function() {
+            let formData = new FormData();
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            } else if (previewImage.src) {
+                let base64Image = previewImage.src.split(',')[1];
+                formData.append('image_data', base64Image);
+            }
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultSection = document.getElementById('result-section');
+                resultSection.innerHTML = <h2>Prediction: <span>${data.prediction}</span></h2>;
+                if (data.image_url) {
+                    document.getElementById('preview-image').src = data.image_url;
+                    document.getElementById('preview-image').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+         
+           
+        recommendProductsButton.addEventListener('click', () => {
+            fetch('/recommend', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const recommendations = data.recommendations.map(product => {
+                    return `<li>${product.name}</li>`;
+                }).join('');
+                resultSection.innerHTML += `<ul>${recommendations}</ul>`;
+            })
+            .catch(error => {
+                resultSection.innerHTML += '<p>Error getting recommendations</p>';
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html> -->
+
+
+<!-- this is after updating code -->
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('/static/skincondition.jpg');
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .uploaded-image-container {
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        h1 {
+            color: #007bff;
+            text-transform: uppercase;
+        }
+        h1 .symbol {
+            font-size: 1.5em;
+            vertical-align: middle;
+        }
+        #button-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        #camera-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #video-element {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        #preview-image {
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+        #capture-button {
+            display: none;
+        }
+        #file-input {
+            display: none;
+        }
+        .recommended-products {
+            margin-top: 20px;
+        }
+        .recommended-products ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .recommended-products li {
+            background-color: #f8f9fa;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <h1 class="mb-4">Skin Condition Analysis <span class="symbol">🩺</span></h1>
+                    <for id="user-form">
+                        <div class="form-group">
+                            <label for="name">Name:</label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="age">Age:</label>
+                            <input type="number" class="form-control" id="age" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="skin-type">Skin Type:</label>
+                            <select class="form-control" id="skin-type" required>
+                                <option value="oily">Oily</option>
+                                <option value="dry">Dry</option>
+                                <option value="combination">Combination</option>
+                                <option value="sensitive">Sensitive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Skin Concerns:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="acne" value="1">
+                                <label class="form-check-label" for="acne">Acne</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="irritation" value="1">
+                                <label class="form-check-label" for="irritation">Irritation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="broken-barrier" value="1">
+                                <label class="form-check-label" for="broken-barrier">Broken barrier</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="dark-spots" value="1">
+                                <label class="form-check-label" for="dark-spots">Dark Spots</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="exfoliation" value="1">
+                                <label class="form-check-label" for="exfoliation">Exfoliation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hydration" value="1">
+                                <label class="form-check-label" for="hydration">Hydration</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pigmentation" value="1">
+                                <label class="form-check-label" for="pigmentation">Pigmentation</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pimples" value="1">
+                                <label class="form-check-label" for="pimples">Pimples</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pores" value="1">
+                                <label class="form-check-label" for="pores">Pores</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="skin-soothing" value="1">
+                                <label class="form-check-label" for="skin-soothing">Skin soothing</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sun-protection" value="1">
+                                <label class="form-check-label" for="sun-protection">Sun protection</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="whitehead-blackhead" value="1">
+                                <label class="form-check-label" for="whitehead-blackhead">Whitehead/Blackhead</label>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="button-container">
+                        <button type="button" id="choose-file-button" class="btn btn-custom">Choose File</button>
+                        <input type="file" name="file" accept="image/*" id="file-input">
+                        <button type="button" id="capture-image-button" class="btn btn-custom">Capture Image</button>
+                    </div>
+                    <button type="button" id="analyze-button" class="btn btn-custom" disabled>Analyze</button>
+                    
+                    
+                    
+                    <div id="camera-container">
+                        <video id="video-element" autoplay></video>
+                        <div class="uploaded-image-container">
+                            <img src="" id="preview-image" class="uploaded-image">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="capture-button" class="btn btn-custom">Capture Image</button>
+                    
+                    <div class="result" id="result-section">
+                        <p id="condition"></p>
+                        <p id="skinTypeResult"></p>
+                        <p id="concernsResult"></p>
+                        <div class="recommended-products">
+                            <h3>Recommended Products:</h3>
+                            <ul id="productList"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        let chooseFileButton = document.getElementById('choose-file-button');
+        let captureImageButton = document.getElementById('capture-image-button');
+        let analyzeButton = document.getElementById('analyze-button');
+        let fileInput = document.getElementById('file-input');
+        let videoElement = document.getElementById('video-element');
+        let cameraContainer = document.getElementById('camera-container');
+        let previewImage = document.getElementById('preview-image');
+        let captureButton = document.getElementById('capture-button');
+        let resultSection = document.getElementById('result-section');
+        let userForm = document.getElementById('user-form');
+
+        chooseFileButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            let file = event.target.files[0];
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                analyzeButton.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        captureImageButton.addEventListener('click', () => {
+            cameraContainer.style.display = 'flex';
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    videoElement.srcObject = stream;
+                    captureButton.style.display = 'block';
+                })
+                .catch((err) => {
+                    console.error("Error accessing camera: ", err);
+                });
+        });
+
+        captureButton.addEventListener('click', () => {
+            let canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            let context = canvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            let dataUrl = canvas.toDataURL('image/png');
+            previewImage.src = dataUrl;
+            previewImage.style.display = 'block';
+            analyzeButton.disabled = false;
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+        });
+
+        analyzeButton.addEventListener('click', () => {
+            let formData = new FormData();
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            } else {
+                let dataUrl = previewImage.src;
+                let base64Image = dataUrl.split(',')[1];
+                formData.append('image_data', base64Image);
+            }
+            formData.append('name', document.getElementById('name').value);
+            formData.append('age', document.getElementById('age').value);
+            formData.append('skin_type', document.getElementById('skin-type').value);
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('condition').innerText = `Condition: ${data.prediction}`;
+                document.getElementById('skinTypeResult').innerText = `Skin Type: ${data.skin_type}`;
+                document.getElementById('concernsResult').innerText = `Concerns: ${data.concerns.join(', ')}`;
+                
+                let productList = document.getElementById('productList');
+                productList.innerHTML = '';  // Clear previous recommendations
+                data.recommended_products.forEach(product => {
+                    let li = document.createElement('li');
+                    li.textContent = product;
+                    productList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultSection.innerHTML = `<span style="color: red;">An error occurred</span>`;
+            });
+        });
+    </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Condition Analysis and Recommendation</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('/static/skincondition.jpg'); /* Replace with the actual URL of your image */
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+            background-repeat: no-repeat;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: ivory;
+            position: relative; /* Ensure card is positioned relatively for absolute positioning */
+        }
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px; /* Add margin-bottom to create space between buttons */
+        }
+        .btn-custom:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+        .result span {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .uploaded-image-container {
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover; /* Ensures image stays within the container */
+            border-radius: 10px;
+        }
+        .file-input {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        h1 {
+            color: #007bff;
+            text-transform: uppercase;
+        }
+        h1 .symbol {
+            font-size: 1.5em;
+            vertical-align: middle;
+        }
+        #camera-container {
+            display: none; /* Hide camera initially */
+            justify-content: center;
+            align-items: center;
+        }
+        #video-element {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        #preview-image {
+            max-width: 100%; /* Ensures the image fits within the container */
+            height: auto;
+            display: none;
+        }
+        #capture-button {
+            display: none; /* Hide capture button initially */
+        }
+        #file-input {
+            display: none; /* Hide file input initially */
+        }
+
+        /* Custom positioning */
+        .top-left {
+            position: absolute;
+            left: 10px;
+            top: 100px; /* Adjust as needed to move the button down */
+            width: 150px; /* Adjust button width */
+        }
+        .top-right {
+            position: absolute;
+            right: 10px;
+            top: 100px; /* Adjust as needed to move the button down */
+            width: 150px; /* Adjust button width */
+        }
+        .center-button {
+            margin: 0 auto;
+            margin-top: 30px;
+            width: 150px; /* Adjust button width */
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <h1 class="mb-4">Skin Condition Analysis <span class="symbol">🩺</span></h1>
+                    <button type="button" id="choose-file-button" class="btn btn-custom top-left">Choose File</button>
+                    <button type="button" id="capture-image-button" class="btn btn-custom top-right">Capture Image</button>
+                    <button type="button" id="analyze-button" class="btn btn-custom center-button" disabled>Analyze</button>
+                    
+                    <input type="file" name="file" accept="image/*" id="file-input">
+                    
+                    <div id="camera-container">
+                        <video id="video-element" autoplay></video>
+                        <div class="uploaded-image-container">
+                            <img src="" id="preview-image" class="uploaded-image">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="capture-button" class="btn btn-custom center-button">Capture Image</button>
+                    
+                    <div class="result" id="result-section">
+                        Result will be displayed here
+                    </div>
+                </div>
+                
+                <!-- Recommendation Form -->
+                <div class="card text-center mt-4">
+                    <h1 class="mb-4">Product Recommendation</h1>
+                    <form action="/recommend" method="post">
+                        <div class="form-group">
+                            <label for="Combination">Combination:</label>
+                            <input type="number" class="form-control" id="Combination" name="Combination" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Dry">Dry:</label>
+                            <input type="number" class="form-control" id="Dry" name="Dry" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Oily">Oily:</label>
+                            <input type="number" class="form-control" id="Oily" name="Oily" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Sensitive">Sensitive:</label>
+                            <input type="number" class="form-control" id="Sensitive" name="Sensitive" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Acne">Acne:</label>
+                            <input type="number" class="form-control" id="Acne" name="Acne" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Irritation">Irritation:</label>
+                            <input type="number" class="form-control" id="Irritation" name="Irritation" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Broken barrier">Broken barrier:</label>
+                            <input type="number" class="form-control" id="Broken barrier" name="Broken barrier" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Dark Spots">Dark Spots:</label>
+                            <input type="number" class="form-control" id="Dark Spots" name="Dark Spots" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Exfoliation">Exfoliation:</label>
+                            <input type="number" class="form-control" id="Exfoliation" name="Exfoliation" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Hydration">Hydration:</label>
+                            <input type="number" class="form-control" id="Hydration" name="Hydration" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Pigmentation">Pigmentation:</label>
+                            <input type="number" class="form-control" id="Pigmentation" name="Pigmentation" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Pimples">Pimples:</label>
+                            <input type="number" class="form-control" id="Pimples" name="Pimples" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Pores">Pores:</label>
+                            <input type="number" class="form-control" id="Pores" name="Pores" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Skin soothing">Skin soothing:</label>
+                            <input type="number" class="form-control" id="Skin soothing" name="Skin soothing" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Sun protection">Sun protection:</label>
+                            <input type="number" class="form-control" id="Sun protection" name="Sun protection" min="0" max="1" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="Whitehead/Blackhead">Whitehead/Blackhead:</label>
+                            <input type="number" class="form-control" id="Whitehead/Blackhead" name="Whitehead/Blackhead" min="0" max="1" value="0">
+                        </div>
+                        <button type="submit" class="btn btn-custom">Get Recommendation</button>
+                    </form>
+                </div>
+                <!-- End of Recommendation Form -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const chooseFileButton = document.getElementById('choose-file-button');
+            const captureImageButton = document.getElementById('capture-image-button');
+            const analyzeButton = document.getElementById('analyze-button');
+            const cameraContainer = document.getElementById('camera-container');
+            const videoElement = document.getElementById('video-element');
+            const previewImage = document.getElementById('preview-image');
+            const captureButton = document.getElementById('capture-button');
+            let stream;
+
+            // Choose File button event listener
+            chooseFileButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // Capture Image button event listener
+            captureImageButton.addEventListener('click', () => {
+                startCamera();
+            });
+
+            // Analyze button event listener
+            analyzeButton.addEventListener('click', () => {
+                analyzeImage();
+            });
+
+            // File input change event listener
+            fileInput.addEventListener('change', () => {
+                displaySelectedImage(fileInput.files[0]);
+                analyzeButton.disabled = false; // Enable Analyze button
+            });
+
+            // Capture button event listener
+            captureButton.addEventListener('click', () => {
+                captureImage();
+            });
+
+            // Start the camera
+            async function startCamera() {
+                cameraContainer.style.display = 'flex';
+                captureButton.style.display = 'block';
+                chooseFileButton.style.display = 'none';
+                captureImageButton.style.display = 'none';
+                analyzeButton.style.display = 'none';
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoElement.srcObject = stream;
+                } catch (err) {
+                    console.error('Error accessing the camera: ', err);
+                }
+            }
+
+            // Capture image from the camera
+            function captureImage() {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/png');
+                previewImage.src = dataURL;
+                previewImage.style.display = 'block';
+                videoElement.style.display = 'none';
+                analyzeButton.style.display = 'block';
+                analyzeButton.disabled = false; // Enable Analyze button
+            }
+
+            // Display the selected image
+            function displaySelectedImage(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                    analyzeButton.style.display = 'block';
+                    analyzeButton.disabled = false; // Enable Analyze button
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Analyze the image
+            async function analyzeImage() {
+                const imageData = previewImage.src;
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                const result = await response.json();
+                displayResult(result);
+            }
+
+            // Display the analysis result
+            function displayResult(result) {
+                const resultSection = document.getElementById('result-section');
+                resultSection.innerHTML = `The predicted skin condition is: <span>${result.condition}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
